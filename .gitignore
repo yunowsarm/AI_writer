@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.local/
+coverage/
+*.log
+# 本地验收截图、日志和毕业设计附件不随源码上传。
+outputs/
+docs/screenshots/
+docs/*-results.txt
+docs/*-test-results.txt
+*.sql.gz
+*.dump
+*.bak
+*.pem
+*.key
+.DS_Store
+Thumbs.db

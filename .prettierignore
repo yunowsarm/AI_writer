@@ -1,0 +1,7 @@
+node_modules
+prototype
+.local
+web/dist
+*.sql
+package-lock.json
+docs/screenshots

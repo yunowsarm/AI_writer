@@ -1,0 +1,74 @@
+/* 主题语义层：覆盖根配色与 Element Plus 变量，弹窗挂载到 body 后仍继承同一主题。 */
+:root {
+  color-scheme: light;
+  --reaction-like: #8464bd;
+  --reaction-favorite: #aa7d26;
+}
+html.dark {
+  color-scheme: dark;
+  --reaction-like: #bca3ef;
+  --reaction-favorite: #e2bd6c;
+  --purple: #baa4f0;
+  --purple-light: #30283f;
+  --muted: #a69db4;
+  --line: #35323f;
+  --el-color-primary: #8467cf;
+  --el-color-primary-light-3: #977cd9;
+  --el-color-primary-light-5: #65518b;
+  --el-color-primary-light-7: #453754;
+  --el-color-primary-light-8: #352d44;
+  --el-color-primary-light-9: #2b2537;
+  --el-color-primary-dark-2: #b6a0ed;
+  --el-bg-color-page: #16161e;
+  --el-bg-color: #21212c;
+  --el-bg-color-overlay: #272631;
+  --el-fill-color-blank: #21212c;
+  --el-fill-color: #302d3a;
+  --el-fill-color-light: #2a2834;
+  --el-fill-color-lighter: #262430;
+  --el-fill-color-extra-light: #24222d;
+  --el-text-color-primary: #eae5f3;
+  --el-text-color-regular: #d2cbdc;
+  --el-text-color-secondary: #a69db4;
+  --el-text-color-placeholder: #88808f;
+  --el-border-color: #45404f;
+  --el-border-color-light: #3d3748;
+  --el-border-color-lighter: #35303f;
+  --el-border-color-extra-light: #302b39;
+}
+body {
+  color: inherit;
+  background-color: inherit;
+}
+.auth-theme-switch {
+  position: fixed;
+  top: 24px;
+  right: 26px;
+  z-index: 1500;
+}
+html.dark .el-table {
+  --el-table-header-bg-color: #292632;
+  --el-table-header-text-color: #c5b8d8;
+  --el-table-text-color: #d2cbdc;
+  --el-table-row-hover-bg-color: #302a3d;
+}
+html.dark .el-loading-mask {
+  background-color: #16161ec9;
+}
+html.dark .el-overlay {
+  background-color: #08080db8;
+}
+html.dark .el-button--primary {
+  --el-button-text-color: #fff;
+  --el-button-hover-text-color: #fff;
+}
+/* 系统偏好只由主题控制器解释，显式明亮/暗色不会被媒体查询覆盖。 */
+@media (max-width: 650px) {
+  .header-right {
+    gap: 10px;
+  }
+  .auth-theme-switch {
+    top: 17px;
+    right: 17px;
+  }
+}
