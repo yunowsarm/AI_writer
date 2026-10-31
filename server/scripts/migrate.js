@@ -17,6 +17,8 @@ export async function migrate() {
   // 旧邮箱不能推定已验证，保留空值，用户可在个人中心补验。
   const emailVerified = await q("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='email_verified_at'")
   if (!emailVerified.length) await q('ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL')
+  const avatar = await q("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='avatar_version'")
+  if (!avatar.length) await q('ALTER TABLE users ADD COLUMN avatar_version CHAR(32) NULL')
   const visibility = await q("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='templates' AND COLUMN_NAME='visibility'")
   if (!visibility.length) await q("ALTER TABLE templates ADD COLUMN visibility ENUM('private','public') NOT NULL DEFAULT 'private'")
   const columns = await q("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ai_jobs' AND COLUMN_NAME='progress_json'")

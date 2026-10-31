@@ -3,8 +3,10 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { q } from '../../db/index.js'
 import { requireUser, publicUser } from '../auth/service.js'
+import { avatarRouter } from './avatar.js'
 export const usersRouter = Router()
 usersRouter.use(requireUser)
+usersRouter.use('/avatar', avatarRouter)
 
 /**
  * GET /api/me
@@ -36,25 +38,17 @@ usersRouter.patch('/', async (req, res) => {
  * 返回：scripts、words、favorites、history、days。
  */
 usersRouter.get('/stats', async (req, res) => {
-  const [scripts] = await q('SELECT COUNT(*) count FROM scripts WHERE owner_id=? AND deleted_at IS NULL', [
-    req.user.id,
-  ])
-  const [words] = await q(
-    'SELECT COALESCE(SUM(CHAR_LENGTH(e.content_text)),0) count FROM episodes e JOIN scripts s ON s.id=e.script_id WHERE s.owner_id=? AND s.deleted_at IS NULL',
-    [req.user.id]
-  )
+  const [scripts] = await q('SELECT COUNT(*) count FROM scripts WHERE owner_id=? AND deleted_at IS NULL', [req.user.id])
+  const [words] = await q('SELECT COALESCE(SUM(CHAR_LENGTH(e.content_text)),0) count FROM episodes e JOIN scripts s ON s.id=e.script_id WHERE s.owner_id=? AND s.deleted_at IS NULL', [req.user.id])
   const [favorites] = await q('SELECT COUNT(*) count FROM favorites WHERE user_id=?', [req.user.id])
   const [history] = await q('SELECT COUNT(*) count FROM browse_history WHERE user_id=?', [req.user.id])
-  const [days] = await q(
-    'SELECT COUNT(DISTINCT DATE(v.created_at)) count FROM versions v JOIN episodes e ON e.id=v.episode_id JOIN scripts s ON s.id=e.script_id WHERE s.owner_id=?',
-    [req.user.id]
-  )
+  const [days] = await q('SELECT COUNT(DISTINCT DATE(v.created_at)) count FROM versions v JOIN episodes e ON e.id=v.episode_id JOIN scripts s ON s.id=e.script_id WHERE s.owner_id=?', [req.user.id])
   res.json({
     scripts: scripts.count,
     words: Number(words.count),
     favorites: favorites.count,
     history: history.count,
-    days: days.count,
+    days: days.count
   })
 })
 

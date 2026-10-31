@@ -19,6 +19,7 @@ export const publicUser = (u) => ({
   email: u.email,
   emailVerified: !!u.email_verified_at,
   emailVerifiedAt: u.email_verified_at || null,
+  avatarUrl: u.avatar_version ? `/api/avatars/${u.id}?v=${u.avatar_version}` : null,
   nickname: u.nickname,
   bio: u.bio,
   role: u.role,

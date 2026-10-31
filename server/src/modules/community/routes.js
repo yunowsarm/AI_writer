@@ -57,7 +57,7 @@ communityRouter.get('/scripts/:id', async (req, res) => {
     id,
   ])
   const comments = await q(
-    "SELECT c.id,c.body,c.user_id,c.created_at,u.nickname FROM comments c JOIN users u ON u.id=c.user_id WHERE c.script_id=? AND c.status='active' ORDER BY c.id DESC LIMIT 100",
+    "SELECT c.id,c.body,c.user_id,c.created_at,u.nickname,IF(u.avatar_version IS NULL,NULL,CONCAT('/api/avatars/',u.id,'?v=',u.avatar_version)) avatarUrl FROM comments c JOIN users u ON u.id=c.user_id WHERE c.script_id=? AND c.status='active' ORDER BY c.id DESC LIMIT 100",
     [id]
   )
   const [like] = await q('SELECT COUNT(*) n FROM likes WHERE script_id=?', [id])

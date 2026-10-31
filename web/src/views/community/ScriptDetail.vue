@@ -9,6 +9,7 @@ import { reportError, success, askText, confirmAction } from '../../shared/feedb
 import PageHeading from '../../components/PageHeading.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ReactionIcon from '../../components/ReactionIcon.vue'
+import UserAvatar from '../../components/UserAvatar.vue'
 import { useReactions } from '../../shared/useReactions'
 const route = useRoute(),
   reactions = useReactions(),
@@ -200,7 +201,7 @@ onMounted(load)
         </div>
         <p v-if="!script.comments.length" class="no-comments">还没有评论，来留下第一条创作建议。</p>
         <div v-for="c in script.comments" :key="c.id" class="reader-comment">
-          <span class="avatar">{{ c.nickname.slice(0, 1) }}</span>
+          <UserAvatar :src="c.avatarUrl" :name="c.nickname" />
           <div>
             <b>{{ c.nickname }}</b
             ><span>{{ dateLabel(c.created_at) }}</span>

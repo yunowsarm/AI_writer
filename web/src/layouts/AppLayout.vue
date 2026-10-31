@@ -9,6 +9,7 @@ import { reportError } from '../shared/feedback'
 import StudioLogo from '../components/StudioLogo.vue'
 import ThemeSwitcher from '../components/ThemeSwitcher.vue'
 import TaskCenter from '../components/TaskCenter.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 const route = useRoute(),
   router = useRouter(),
   auth = useAuth()
@@ -90,7 +91,7 @@ async function logout() {
           <span>{{ isAdminPage ? '返回创作工作区' : '管理后台' }}</span>
         </button>
         <button class="account-button" @click="router.push(auth.user ? '/profile' : '/login')">
-          <span class="avatar small">{{ auth.user?.nickname?.slice(0, 1) || '客' }}</span>
+          <UserAvatar :src="auth.user?.avatarUrl" :name="auth.user?.nickname || '访客'" size="small" />
           <span class="account-copy">
             {{ auth.user?.nickname || '登录 / 注册' }}
             <small>{{ auth.user?.role === 'admin' ? '系统管理员' : '自由创作者' }}</small>
@@ -114,7 +115,7 @@ async function logout() {
             {{ auth.capabilities.aiConfigured ? 'AI 已配置' : 'AI 待配置' }}
           </span>
           <el-dropdown v-if="auth.user" @command="(v) => (v === 'logout' ? logout() : router.push('/profile'))">
-            <button class="avatar">{{ auth.user.nickname.slice(0, 1) }}</button>
+            <button type="button" aria-label="个人账号菜单" style="padding: 0; border-radius: 50%"><UserAvatar :src="auth.user.avatarUrl" :name="auth.user.nickname" /></button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>

@@ -9,6 +9,7 @@ import { dateLabel } from '../../shared/format'
 import { reportError, success, confirmAction } from '../../shared/feedback'
 import PageHeading from '../../components/PageHeading.vue'
 import AccountEmailVerification from './AccountEmailVerification.vue'
+import AvatarEditor from './AvatarEditor.vue'
 const auth = useAuth(),
   router = useRouter(),
   profile = ref({ ...auth.user }),
@@ -93,7 +94,7 @@ onMounted(load)
   <div class="profile-layout">
     <section class="panel profile-form">
       <div class="profile-banner">
-        <span class="avatar big">{{ auth.user.nickname.slice(0, 1) }}</span>
+        <AvatarEditor />
         <div>
           <h2>{{ auth.user.nickname }}</h2>
           <p>{{ auth.user.role === 'admin' ? '系统管理员' : '自由创作者' }} · {{ dateLabel(auth.user.createdAt) }} 加入</p>

@@ -13,6 +13,7 @@ import { originGuard } from './shared/origin.js'
 import { loadUser } from './modules/auth/service.js'
 import { authRouter } from './modules/auth/routes.js'
 import { usersRouter } from './modules/users/routes.js'
+import { avatarReadRouter } from './modules/users/avatar.js'
 import { scriptsRouter, episodesRouter } from './modules/scripts/routes.js'
 import { templatesRouter, configsRouter } from './modules/templates/routes.js'
 import { communityRouter, favoritesRouter } from './modules/community/routes.js'
@@ -66,6 +67,7 @@ export function createApp() {
     res.json({ ok: true, database: 'mysql', aiMode: 'per-user' })
   })
   app.use('/api', loadUser)
+  app.use('/api/avatars', avatarReadRouter)
 
   /**
    * POST /api/events/visit
