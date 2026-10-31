@@ -17,6 +17,8 @@ export const hashToken = (t) => createHash('sha256').update(t).digest('hex')
 export const publicUser = (u) => ({
   id: u.id,
   email: u.email,
+  emailVerified: !!u.email_verified_at,
+  emailVerifiedAt: u.email_verified_at || null,
   nickname: u.nickname,
   bio: u.bio,
   role: u.role,
@@ -84,14 +86,6 @@ export const requireAdmin = (req, res, next) => {
 }
 
 /**
- * 规范化邮箱并以 bcrypt 哈希保存密码，返回新建用户记录。
- */
-export async function register({ email, password, nickname }) {
-  const result = await q('INSERT INTO users(email,password_hash,nickname) VALUES(?,?,?)', [email.toLowerCase(), await bcrypt.hash(password, 12), nickname])
-  return (await q('SELECT * FROM users WHERE id=?', [result.insertId]))[0]
-}
-
-/**
  * 校验邮箱、密码及账号状态。
  * 不存在或没有密码的账号也执行一次 bcrypt 比对，并使用统一登录失败提示。
  */
@@ -136,7 +130,7 @@ export async function consumeToken(token, kind, work) {
 export async function resetPassword(token, password) {
   const hash = await bcrypt.hash(password, 12)
   await consumeToken(token, 'password_reset', async (t, db) => {
-    await q('UPDATE users SET password_hash=? WHERE id=?', [hash, t.user_id], db)
+    await q('UPDATE users SET password_hash=?,email_verified_at=COALESCE(email_verified_at,UTC_TIMESTAMP()) WHERE id=?', [hash, t.user_id], db)
     await q('DELETE FROM sessions WHERE user_id=?', [t.user_id], db)
   })
 }

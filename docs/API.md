@@ -19,7 +19,7 @@
 | --------------------------------- | --------------------------- | ------------------------------------------------------------------ |
 | GET /health                       | 无                          | `{ok,database:'mysql',aiMode:'per-user'}`；同时检查数据库连接      |
 | GET /auth/capabilities            | 无                          | `{wechat,passwordReset,aiConfigured,model}`，不返回任何凭据        |
-| POST /auth/register               | `{email,password,nickname}` | 201 用户信息并设置会话；密码 8..128 字符，昵称 1..40，邮箱最长 190 |
+| POST /auth/register               | `{email,password,nickname,code}` | 201 用户信息并设置会话；密码 8..128 字符，昵称 1..40，邮箱最长 190 |
 | POST /auth/login                  | `{email,password}`          | 用户信息并设置会话                                                 |
 | POST /auth/logout                 | 无                          | `{ok:true}`，清除当前会话                                          |
 | POST /auth/password/change        | `{oldPassword,newPassword}` | `{ok:true}`；需要登录，所有其他会话失效                            |
@@ -27,12 +27,23 @@
 | POST /auth/password-reset/confirm | `{token,password}`          | 一次性 token 为 64 字符，15 分钟有效；成功后旧会话全部失效         |
 | GET /auth/wechat                  | 可选 `bind=1`               | 重定向微信网站扫码授权；绑定需已登录                               |
 | GET /auth/wechat/callback         | `code,state`                | 校验一次性 state、服务端换取微信身份、建立会话并重定向工作台       |
-| GET /me                           | 登录                        | `{id,email,nickname,bio,role,createdAt}`                           |
+| GET /me                           | 登录                        | `{id,email,emailVerified,emailVerifiedAt,nickname,bio,role,createdAt}`                           |
 | PATCH /me                         | `{nickname,bio}`            | 更新后的用户信息；简介最长 500                                     |
 | GET /me/stats                     | 登录                        | `{scripts,words,favorites,history,days}`                           |
 | GET /me/history                   | 登录                        | 最近 50 条仍可公开读取的浏览记录数组                               |
 | DELETE /me/history                | 登录                        | 清空当前用户历史                                                   |
 | POST /events/visit                | 无                          | 记录实际工作区进入事件，返回 `{ok:true}`                           |
+
+邮箱验证补充：新注册必须提交六位注册验证码，SMTP 未配置返回 503，不能免验证注册。`GET /auth/capabilities` 同时返回 `emailCode`、`registrationRequiresEmail`。用户验证状态通过 `emailVerified` 和 `emailVerifiedAt` 返回。
+
+| 方法与路径 | 参数 | 行为 |
+| --- | --- | --- |
+| POST /auth/email-code | `{email,purpose}` | 发送验证码，purpose 为 register、login、reset、verify；verify 需要登录且仅能发送至本人邮箱 |
+| POST /auth/email-verify | `{code}` | 已登录用户验证当前账号邮箱，返回更新后的用户资料 |
+| POST /auth/email-login | `{email,code}` | 校验登录用途验证码，登录并记录邮箱验证时间 |
+| POST /auth/email-reset | `{email,code,password}` | 校验重置用途验证码，更新密码和验证时间，撤销旧会话 |
+
+验证码十分钟有效、六十秒冷却、错误五次失效，单次使用，按邮箱及用途隔离。详细升级步骤见 [邮箱验证流程](邮箱验证流程.md)。
 
 ## 剧本与分集
 

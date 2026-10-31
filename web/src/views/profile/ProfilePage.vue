@@ -8,6 +8,7 @@ import { useAuth } from '../../stores/auth'
 import { dateLabel } from '../../shared/format'
 import { reportError, success, confirmAction } from '../../shared/feedback'
 import PageHeading from '../../components/PageHeading.vue'
+import AccountEmailVerification from './AccountEmailVerification.vue'
 const auth = useAuth(),
   router = useRouter(),
   profile = ref({ ...auth.user }),
@@ -105,6 +106,7 @@ onMounted(load)
         <el-button type="primary" native-type="submit" :loading="busy">保存修改</el-button>
       </el-form>
       <el-divider />
+      <AccountEmailVerification />
       <div class="security-row">
         <div>
           <b>账号密码</b>

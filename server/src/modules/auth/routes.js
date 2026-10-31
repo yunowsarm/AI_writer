@@ -11,9 +11,17 @@ import { settingsView } from '../settings/service.js'
 import { sessionCookie } from './windowSession.js'
 import { emailRouter, emailReady, consumeEmailCode } from './emailCodes.js'
 import { demoQrRouter, demoQrEnabled } from './demoQr.js'
-import { createSession, publicUser, register, verifyLogin, hashToken, issueToken, consumeToken, resetPassword, requireUser } from './service.js'
+import { createSession, publicUser, verifyLogin, hashToken, issueToken, consumeToken, resetPassword, requireUser } from './service.js'
 export const authRouter = Router()
-const credentials = z.object({ email: z.string().email().max(190), password: z.string().min(8).max(128) })
+const credentials = z.object({
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(190)
+    .transform((email) => email.toLowerCase()),
+  password: z.string().min(8).max(128)
+})
 authRouter.use(
   rateLimit({
     windowMs: 15 * 60000,
@@ -25,33 +33,27 @@ authRouter.use(
   })
 )
 
+authRouter.use(emailRouter)
+
+authRouter.use(demoQrRouter)
+
 /**
  * POST /api/auth/register
  * 用途：注册账号并创建登录会话。
  * 权限：无需登录，受认证接口限流保护。
- * 入参：Body：email、password（8～128 字符）、nickname。
+ * 入参：Body：email、password（8～128 字符）、nickname、六位注册验证码 code。
+ * SMTP 未配置时拒绝注册，不允许降级绕过邮箱验证。
  * 返回：201，脱敏用户资料，同时写入会话 Cookie。
  */
-authRouter.use(emailRouter)
-authRouter.use(demoQrRouter)
-
 authRouter.post('/register', async (req, res) => {
-  const body = credentials.extend({ nickname: z.string().trim().min(1).max(40) }).parse(req.body)
-  const hash = emailReady() ? await bcrypt.hash(body.password, 12) : null
-  const u = emailReady()
-    ? await consumeEmailCode(
-        body.email.toLowerCase(),
-        'register',
-        z
-          .string()
-          .regex(/^\d{6}$/)
-          .parse(req.body.code),
-        async (db) => {
-          const created = await q('INSERT INTO users(email,password_hash,nickname) VALUES(?,?,?)', [body.email.toLowerCase(), hash, body.nickname], db)
-          return (await q('SELECT * FROM users WHERE id=?', [created.insertId], db))[0]
-        }
-      )
-    : await register(body)
+  ensure(emailReady(), 503, 'EMAIL_NOT_CONFIGURED', '邮箱验证服务尚未配置，暂时无法注册，请联系管理员')
+  const body = credentials.extend({ nickname: z.string().trim().min(1).max(40), code: z.string().regex(/^\d{6}$/, '请输入六位邮箱验证码') }).parse(req.body)
+  const hash = await bcrypt.hash(body.password, 12)
+  const u = await consumeEmailCode(body.email, 'register', body.code, async (db) => {
+    // 验证码消费和账号创建保持原子性，注册冲突不能丢失有效验证码。
+    const created = await q('INSERT INTO users(email,password_hash,nickname,email_verified_at) VALUES(?,?,?,UTC_TIMESTAMP())', [body.email, hash, body.nickname], db)
+    return (await q('SELECT * FROM users WHERE id=?', [created.insertId], db))[0]
+  })
   await createSession(u.id, res, req.sessionScope)
   res.status(201).json(publicUser(u))
 })
@@ -96,6 +98,7 @@ authRouter.get('/capabilities', async (req, res) => {
     wechat: !!(config.wechat.id && config.wechat.secret && config.wechat.callback),
     passwordReset: emailReady(),
     emailCode: emailReady(),
+    registrationRequiresEmail: true,
     demoQr: demoQrEnabled(),
     aiConfigured: ai.keyConfigured,
     model: ai.model
@@ -126,7 +129,7 @@ authRouter.post('/password/change', requireUser, async (req, res) => {
  * 返回：统一提示消息，不通过成功响应透露邮箱是否注册。
  */
 authRouter.post('/password-reset/request', async (req, res) => {
-  ensure(config.smtp.host && config.smtp.from, 503, 'EMAIL_NOT_CONFIGURED', '邮箱服务尚未配置，请联系管理员')
+  ensure(emailReady(), 503, 'EMAIL_NOT_CONFIGURED', '邮箱服务尚未配置，请联系管理员')
   const { email } = z.object({ email: z.string().email().max(190) }).parse(req.body)
   const rows = await q('SELECT id FROM users WHERE email=? AND status=?', [email.toLowerCase(), 'active'])
   if (rows.length) {

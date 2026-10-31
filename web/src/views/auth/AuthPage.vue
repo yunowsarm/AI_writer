@@ -1,13 +1,14 @@
 <script setup>
 import { newWindowScope, setWindowScope } from '../../api/windowSession'
 /** 账号入口：注册、登录、真实微信授权与邮箱找回；未配置能力不可伪装成功。 */
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../stores/auth'
 import { api } from '../../api/client'
 import { success } from '../../shared/feedback'
 import StudioLogo from '../../components/StudioLogo.vue'
 import DemoQrLogin from './DemoQrLogin.vue'
+import { useEmailCode, validEmail } from '../../shared/useEmailCode'
 const demoQr = ref(null)
 const route = useRoute(),
   router = useRouter(),
@@ -16,28 +17,39 @@ const route = useRoute(),
   loading = ref(false),
   error = ref(route.query.error || ''),
   form = ref({ email: '', password: '', nickname: '', code: '' })
-const countdown = ref(0),
-  sending = ref(false)
-let timer
-onBeforeUnmount(() => clearInterval(timer))
+const registerStep = ref(1)
+const { countdown, sending, send } = useEmailCode(
+  () => form.value.email,
+  () => (mode.value === 'register' ? 'register' : mode.value === 'reset' ? 'reset' : 'login')
+)
+
+// 切换用途或收件邮箱后清空旧验证码；同一邮箱用途的发送冷却仍由组合函数保留。
+watch(mode, () => {
+  registerStep.value = 1
+  form.value.code = ''
+  error.value = ''
+})
+watch(
+  () => form.value.email,
+  () => {
+    form.value.code = ''
+  }
+)
+
+/** 返回账号资料步骤，清除验证码，不重置已发送邮件的冷却时间。 */
+function editRegistration() {
+  registerStep.value = 1
+  form.value.code = ''
+  error.value = ''
+}
 
 /** 按注册、登录、找回用途发送验证码，倒计时防止误重复提交。 */
 async function sendCode() {
-  if (countdown.value || sending.value) return
-  sending.value = true
   error.value = ''
   try {
-    await api('/auth/email-code', { method: 'POST', body: { email: form.value.email, purpose: mode.value === 'register' ? 'register' : mode.value === 'reset' ? 'reset' : 'login' } })
-    countdown.value = 60
-    clearInterval(timer)
-    timer = setInterval(() => {
-      if (--countdown.value <= 0) clearInterval(timer)
-    }, 1000)
-    success('验证码已发送，十分钟内有效')
+    if (await send()) success('验证码已发送，请查看邮箱，十分钟内有效')
   } catch (e) {
     error.value = e.message
-  } finally {
-    sending.value = false
   }
 }
 
@@ -56,6 +68,31 @@ function wechatLogin() {
  */
 async function submit() {
   error.value = ''
+  if (loading.value || sending.value) return
+  if (mode.value !== 'login' && !auth.capabilities.emailCode) {
+    error.value = '邮箱验证服务尚未配置，请联系管理员；已有账号仍可使用密码登录'
+    return
+  }
+  if (!validEmail(form.value.email)) {
+    error.value = '请填写有效的邮箱地址'
+    return
+  }
+  if (mode.value === 'register' && registerStep.value === 1) {
+    if (!form.value.nickname.trim()) {
+      error.value = '请填写创作者昵称'
+      return
+    }
+    if (form.value.password.length < 8 || form.value.password.length > 128) {
+      error.value = '密码需要 8～128 位字符'
+      return
+    }
+    registerStep.value = 2
+    return
+  }
+  if (mode.value !== 'login' && !/^\d{6}$/.test(form.value.code)) {
+    error.value = '请输入邮件中的六位验证码'
+    return
+  }
   loading.value = true
   try {
     if (mode.value === 'reset') {
@@ -108,22 +145,33 @@ async function submit() {
         {{ mode === 'login' ? '欢迎回到创作空间' : mode === 'register' ? '开始你的创作旅程' : mode === 'email' ? '邮箱验证码登录' : '找回账号密码' }}
       </h2>
       <p>把脑海里的世界，写成值得被看见的故事。</p>
+      <el-steps v-if="mode === 'register'" :active="registerStep - 1" simple class="registration-steps">
+        <el-step title="填写账号信息" />
+        <el-step title="验证邮箱" />
+      </el-steps>
+      <el-alert v-if="mode !== 'login' && !auth.capabilities.emailCode" title="邮箱验证服务尚未配置，暂时无法注册或使用验证码。请联系管理员配置邮件服务。" type="warning" :closable="false" show-icon />
       <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
       <el-form label-position="top" @submit.prevent="submit">
-        <el-form-item v-if="mode === 'register'" label="创作者昵称"><el-input v-model="form.nickname" maxlength="40" autocomplete="nickname" /></el-form-item>
-        <el-form-item label="账号邮箱"><el-input v-model="form.email" type="email" autocomplete="username" placeholder="输入你的邮箱" /></el-form-item>
-        <el-form-item v-if="mode !== 'email'" :label="mode === 'reset' ? '新密码' : '密码'">
+        <el-form-item v-if="mode === 'register' && registerStep === 1" label="创作者昵称"><el-input v-model="form.nickname" maxlength="40" autocomplete="nickname" /></el-form-item>
+        <el-form-item label="账号邮箱">
+          <el-input v-model="form.email" :readonly="mode === 'register' && registerStep === 2" :disabled="sending || loading" type="email" autocomplete="username" placeholder="输入你的邮箱" />
+        </el-form-item>
+        <p v-if="mode === 'register' && registerStep === 2" class="verification-note">请获取并填写该邮箱收到的验证码。验证通过后才会创建账号。</p>
+        <el-form-item v-if="mode !== 'email' && !(mode === 'register' && registerStep === 2)" :label="mode === 'reset' ? '新密码' : '密码'">
           <el-input v-model="form.password" type="password" show-password :autocomplete="mode === 'register' ? 'new-password' : 'current-password'" placeholder="至少 8 位字符" />
         </el-form-item>
-        <el-form-item v-if="auth.capabilities.emailCode && mode !== 'login'" label="邮箱验证码">
-          <el-input v-model="form.code" maxlength="6" inputmode="numeric" placeholder="输入六位验证码">
+        <el-form-item v-if="mode === 'email' || mode === 'reset' || (mode === 'register' && registerStep === 2)" label="邮箱验证码">
+          <el-input v-model="form.code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="输入六位验证码">
             <template #append>
-              <el-button :loading="sending" :disabled="countdown > 0" @click="sendCode">{{ countdown ? countdown + ' 秒后重发' : '获取验证码' }}</el-button>
+              <el-button :loading="sending" :disabled="countdown > 0 || !auth.capabilities.emailCode || loading || !validEmail(form.email)" @click="sendCode">
+                {{ countdown ? countdown + ' 秒后重发' : '获取验证码' }}
+              </el-button>
             </template>
           </el-input>
         </el-form-item>
-        <el-button native-type="submit" type="primary" class="full-width" :loading="loading">
-          {{ mode === 'register' ? '注册并进入工作台' : mode === 'reset' ? '确认重置密码' : '登录工作台' }}
+        <el-button v-if="mode === 'register' && registerStep === 2" text :disabled="sending || loading" @click="editRegistration">返回修改账号信息</el-button>
+        <el-button native-type="submit" type="primary" class="full-width" :loading="loading" :disabled="sending || (mode !== 'login' && !auth.capabilities.emailCode)">
+          {{ mode === 'register' ? (registerStep === 1 ? '下一步：验证邮箱' : '验证并创建账号') : mode === 'reset' ? '确认重置密码' : '登录工作台' }}
           <el-icon v-if="mode === 'login'" class="inline-icon" aria-hidden="true"><Right /></el-icon>
         </el-button>
       </el-form>
@@ -166,7 +214,7 @@ async function submit() {
       <p class="fine muted">
         首次管理员凭据在项目 .local/首次登录.txt。
         <br />
-        普通用户可直接注册；账号与作品将保存到 MySQL。
+        新账号需要验证邮箱后注册；账号与作品将保存到 MySQL。
       </p>
       <router-link to="/community" class="guest-link">
         先去广场看看
@@ -176,3 +224,14 @@ async function submit() {
   </div>
   <DemoQrLogin ref="demoQr" />
 </template>
+
+<style scoped>
+.registration-steps {
+  margin: 20px 0;
+}
+.verification-note {
+  color: var(--el-text-color-regular);
+  line-height: 1.7;
+  margin: 0 0 18px;
+}
+</style>
