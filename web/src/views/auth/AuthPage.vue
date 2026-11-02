@@ -207,18 +207,20 @@ async function submit() {
           忘记密码
         </button>
       </div>
-      <el-divider>其他登录方式</el-divider>
-      <el-button v-if="auth.capabilities.demoQr" class="full-width" @click="demoQr.show()">扫码登录（开发演示）</el-button>
+
+      <!-- <el-button v-if="auth.capabilities.demoQr" class="full-width" @click="demoQr.show()">扫码登录（开发演示）</el-button>
       <el-button class="full-width" :disabled="!auth.capabilities.wechat" @click="wechatLogin">微信快捷登录{{ auth.capabilities.wechat ? '' : '（待配置）' }}</el-button>
       <p class="fine muted">微信首次授权将自动创建账号，无需预先注册。</p>
       <p class="fine muted">
         首次管理员凭据在项目 .local/首次登录.txt。
         <br />
         新账号需要验证邮箱后注册；账号与作品将保存到 MySQL。
-      </p>
-      <router-link to="/community" class="guest-link">
-        先去广场看看
-        <el-icon class="inline-icon" aria-hidden="true"><Right /></el-icon>
+      </p> -->
+      <router-link to="/community" class="guest guest-link">
+        <el-divider>
+          <span>先去广场看看</span>
+          <el-icon class="inline-icon" aria-hidden="true"><Right /></el-icon>
+        </el-divider>
       </router-link>
     </section>
   </div>
@@ -233,5 +235,21 @@ async function submit() {
   color: var(--el-text-color-regular);
   line-height: 1.7;
   margin: 0 0 18px;
+}
+.guest {
+  display: block;
+  color: var(--purple);
+  text-align: center;
+  transition: color 0.3s ease;
+}
+/* 分隔线文字和图标继承链接颜色，使悬停与键盘聚焦反馈同步生效。 */
+.guest :deep(.el-divider),
+.guest :deep(.el-divider__text) {
+  color: inherit;
+  transition: color 0.3s ease;
+}
+.guest:hover,
+.guest:focus-visible {
+  color: #735d97;
 }
 </style>

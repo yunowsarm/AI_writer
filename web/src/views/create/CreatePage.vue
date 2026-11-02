@@ -514,7 +514,6 @@ onMounted(async () => {
           <el-icon class="leading-icon" aria-hidden="true"><MagicStick /></el-icon>
           故事设定
         </h2>
-        <span>一集一幕，逐步完成</span>
       </div>
       <el-form label-position="top">
         <el-form-item label="生成模型"><ModelSelector v-model="selection" :disabled="running || randomizing" /></el-form-item>
